@@ -1,0 +1,195 @@
+import numpy as np
+import pandas as pd
+import random
+from scipy.stats import chi2_contingency
+from scipy.stats import fisher_exact
+from math import comb
+
+def test_oberoende(n): #inputs: how many tests you wat to do
+    #outputs: times A happen, times B happen, times both A and B happen
+    A=0       #counts a and b from 2 independant random variables
+    B=0
+    AB=0
+    for i in range(n):
+        random1 = random.randint(1, 10)
+        random2 = random.randint(1, 10)
+        a=False
+        b=False
+        if random1==1 or random1==2:
+            a=True
+            A=A+1
+        if random2==1 or random2==2:
+            b=True
+            B=B+1
+        if a==True and b==True:
+            AB=AB+1
+            
+    return A,B,ABdef test_oberoende(n): #inputs: how many tests you wat to do
+    #outputs: times A happen, times B happen, times both A and B happen
+    A=0       #counts a and b from 2 independant random variables
+    B=0
+    AB=0
+    for i in range(n):
+        random1 = random.randint(1, 10)
+        random2 = random.randint(1, 10)
+        a=False
+        b=False
+        if random1==1 or random1==2:
+            a=True
+            A=A+1
+        if random2==1 or random2==2:
+            b=True
+            B=B+1
+        if a==True and b==True:
+            AB=AB+1
+            
+    return A,B,AB
+
+def test_beroende(n): #inputs: how many tests you wat to do
+    #outputs: times A happen, times B happen, times both A and B happen
+    A=0       #counts a and b from 1 random variables
+    B=0
+    AB=0
+    for i in range(n):
+        a=False
+        b=False
+        random1 = random.randint(1, 10)
+        if random1==1 or random1==2:
+            A=A+1
+            a=True
+        if random1==2 or random1==3:
+            B=B+1
+            b=True
+        if a==True and b==True:
+            AB=AB+1
+        
+    return A,B,AB
+
+
+def our_chi(f,n): #inputs: the wanted test, the size of the sample
+    #outputs: chi-square
+    #the function performs the chi-square test
+    a,b,ab=f(n) 
+    A=a/n       
+    Ac=1-A
+    B=b/n
+    Bc=1-B
+    if A==0 or B==0:
+        return 100 #avoids division by zero, makes the chi.square arbitrarily large
+    x1=((ab-n*A*B)**2)/(n*A*B) #This is just the chi-square formula
+    x2=((a-ab-n*A*Bc)**2)/(n*A*Bc)
+    x3=((b-ab-n*Ac*B)**2)/(n*Ac*B)
+    x4=((n-a-b+ab-n*Ac*Bc)**2)/(n*Ac*Bc)
+    x=x1+x2+x3+x4
+    return x
+
+def alpha(f,n,m=10000): ##inputs: the wanted test, the size of the sample, amount fo times the test is ran
+    #Outputs: rejections, accepts   
+    #this functions performs the chi-square test m times and counts rejections and acceptances
+    false_negative=0
+    for i in range(m):
+        #If p_value is lower than alpha we reject the null hypothesis and accept the alternative, otherwise the null hypothesis is accepted
+        if our_chi(f,n)>3.84:
+            false_negative=false_negative+1
+    alpha=false_negative/m
+    p_rejections=round(alpha,3)
+    p_accepts=round(1-alpha,3)
+    return(p_rejections, p_accepts)
+
+    #printing results
+    
+print("Chi-Square Method (our own version)")
+print()
+
+print("Idependant: ")
+print("Rejections, Accepts")
+print("Type 1 error, Correkt acceptances")
+print("N=1000:",alpha(test_oberoende, 1000))
+print("N=100: ",alpha(test_oberoende, 100))
+print("N=10:  ",alpha(test_oberoende, 10))
+
+print()
+print("Beroende: ")
+print("Rejections, Acceptances")
+print("Correct rejections,type 2 errors")
+print("N=1000: ",alpha(test_beroende, 1000))
+print("N=100:  ",alpha(test_beroende, 100))
+print("N=10:   ",alpha(test_beroende, 10))
+
+def chi(f,n):
+        #Använder inbygda Chi-square funktionen för att få fram chi-square och p-value
+        #Inputs: det testet du vill köra, storleken på N
+        #outputs: chi-square, p_value
+    a,b,ab=f(n)
+        #skapar tabellen.
+        #       A union B, A utan B
+        #       B utan A,  varken A eller B
+    observed = np.array([[ab,   a-ab    ], 
+                         [b-ab, n-a-b+ab]])
+        #print(ab + (a-ab) + (b-ab) + (n-a-b+ab))
+        #kommer stöta på division med noll om a=0 eller b=0. Jag väljer att ge godtycklig hög chi_square och godtyckligt lågt p_value
+    if a==0 or b==0:
+        return(10, 0)
+        #inbyggda chi-square funktionen
+    chi_square, p_value, dof, expected = chi2_contingency(observed)
+    return(chi_square, p_value)
+
+
+
+def fisher(f,n):
+        #Använder inbygda Chi-square funktionen för att få fram chi-square och p-value
+        #Inputs: det testet du vill köra, storleken på N
+        #outputs: chi-square, p_value
+    a,b,ab=f(n)
+        #skapar tabellen.
+        #       A union B, A utan B
+        #       B utan A,  varken A eller B
+    observed = np.array([[ab,   a-ab    ], 
+                         [b-ab, n-a-b+ab]])
+        #print(ab + (a-ab) + (b-ab) + (n-a-b+ab))
+        #kommer stöta på division med noll om a=0 eller b=0. Jag väljer att ge godtycklig hög chi_square och godtyckligt lågt p_value
+#    if a==0 or b==0:
+#        return(10, 0)
+        #inbyggda fishers test funktionen
+    oddratio, p_value = fisher_exact(observed)
+    return(oddratio, p_value)
+
+def kontroll(method, f,N,m=10000,alpha=0.05):
+        #den här funktionen kör m stycken chi_square test för att se hur många som förkastas och accepteras
+        #Inputs: oberoende, beroende, Hur många randomvariabler vi testar, Hur många chi-squares vi testar, Alpha
+        #Outputs: rejections, accepts    
+    rejections=0
+    accepts=0
+
+        #Om p_value är lägre än alpha är nollhypotesen utanför kritiska zonen och nollhypotesen förkastas. Är nollhypotesen innanför kritiska zonen accepteras den
+    for i in range (m):
+        chi_square,p_value=method(f, N)
+        if p_value < alpha:
+            rejections=rejections+1
+        else:
+            accepts=accepts+1
+    p_rejections=rejections/m
+    p_accepts=accepts/m
+ 
+    return p_rejections, p_accepts
+
+print("Chi-Square Method")
+print()
+
+print("Oberoende: ")
+print("Förkastas, Accepteras")
+print("Type 1 error, Korrekta accepteringar")
+print("N=1000:",kontroll(chi, test_oberoende, 1000))
+print("N=100: ",kontroll(chi, test_oberoende, 100))
+print("N=10:  ",kontroll(chi, test_oberoende, 10))
+print("Vi ser att Chi-square tenderar att överförkasta nollhypotesen för låga N, men den går mer mot 0.05 ju större N som testas")
+
+print()
+print("Beroende: ")
+print("Förkastas, Accepteras")
+print("Korrekta Förkastningar, type 2 errors")
+print("N=1000: ",kontroll(chi, test_beroende, 1000))
+print("N=100:  ",kontroll(chi, test_beroende, 100))
+print("N=10:   ",kontroll(chi, test_beroende, 10))
+print("Vi ser att Chi-square tenderar att överacceptera nollhypotesen för låga N, men går mot 0.00 ju större N som testas")
+print("Notice that the function we programmed on our own and pythons buit-in function gets virtually identical results, to the point we can't discern the results from each other")
